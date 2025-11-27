@@ -1,6 +1,6 @@
 
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import LoadingSpinner from './LoadingSpinner.tsx';
 import AudioPlayer from './AudioPlayer.tsx';
 import CopyButton from './CopyButton.tsx';
@@ -14,12 +14,15 @@ interface ResultCardProps {
     grammarResult?: GrammarCorrectionResult | null;
 }
 
-const ResultCard: React.FC<ResultCardProps> = ({ isLoading, translateResult, wordMeaningResult, grammarResult }) => {
+const ResultCard: React.FC<ResultCardProps> = React.memo(({ isLoading, translateResult, wordMeaningResult, grammarResult }) => {
     
-    const hasContent = !isLoading && (
-        (translateResult && translateResult.length > 0) ||
-        (grammarResult && grammarResult.correctedSentence) ||
-        wordMeaningResult
+    const hasContent = useMemo(() => 
+        !isLoading && (
+            (translateResult && translateResult.length > 0) ||
+            (grammarResult && grammarResult.correctedSentence) ||
+            wordMeaningResult
+        ),
+        [isLoading, translateResult, grammarResult, wordMeaningResult]
     );
 
     const renderSection = (title: string, icon: React.ReactNode, content: React.ReactNode) => (
@@ -155,7 +158,11 @@ const ResultCard: React.FC<ResultCardProps> = ({ isLoading, translateResult, wor
             </div>
         </div>
     );
-};
+});
+
+ResultCard.displayName = 'ResultCard';
+
+export default ResultCard;
 
 
 // --- ICONS ---
@@ -222,5 +229,3 @@ const ExampleIcon = () => (
         <path fillRule="evenodd" d="M4 2a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2H4zm1.5 6.5a.5.5 0 01.5-.5h8a.5.5 0 010 1H6a.5.5 0 01-.5-.5zm0 3a.5.5 0 01.5-.5h8a.5.5 0 010 1H6a.5.5 0 01-.5-.5z" clipRule="evenodd" />
     </svg>
 );
-
-export default ResultCard;

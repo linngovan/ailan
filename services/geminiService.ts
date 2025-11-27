@@ -1,11 +1,21 @@
 
-
 import { GoogleGenAI, Modality, Content, Type } from "@google/genai";
 import { ChatMessage } from '../types.ts';
+import { API_CONFIG, ERROR_MESSAGES } from '../constants.ts';
 
-// FIX: Initialized GoogleGenAI client directly with process.env.API_KEY to adhere to coding guidelines.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const model = 'gemini-2.5-flash';
+/**
+ * Validate API key is available
+ */
+const validateApiKey = (): void => {
+  if (!process.env.API_KEY && !process.env.GEMINI_API_KEY) {
+    throw new Error(ERROR_MESSAGES.API_KEY_MISSING);
+  }
+};
+
+// Initialize Gemini AI client
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey });
+const model = API_CONFIG.MODEL;
 
 export interface TranslateResultItem {
   context: string;
@@ -15,8 +25,11 @@ export interface TranslateResultItem {
 export type TranslateResult = TranslateResultItem[];
 
 export const translateAndCheck = async (vietnameseText: string): Promise<TranslateResult> => {
-  if (!vietnameseText.trim()) {
-    return [];
+  validateApiKey();
+  
+  const trimmed = vietnameseText.trim();
+  if (!trimmed) {
+    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
   
   const translateSchema = {
@@ -48,7 +61,7 @@ Your response must be a JSON array that adheres to the provided schema.
 
 - For the \`explanation\` field, you must provide the explanation in **Vietnamese**.
 
-Vietnamese: "${vietnameseText}"
+Vietnamese: "${trimmed}"
 `;
 
     const response = await ai.models.generateContent({
@@ -60,11 +73,13 @@ Vietnamese: "${vietnameseText}"
       },
     });
 
+    if (!response.text) {
+      throw new Error('Empty response from API');
+    }
     return JSON.parse(response.text.trim());
   } catch (error) {
     console.error("Error during translation:", error);
-    // FIX: Throw an error to let the UI component handle the error state, rather than returning an error string.
-    throw new Error("Sorry, an error occurred during translation. Please try again.");
+    throw new Error(ERROR_MESSAGES.TRANSLATION_ERROR);
   }
 };
 
@@ -79,8 +94,11 @@ export interface GrammarCorrectionResult {
 }
 
 export const correctGrammar = async (englishText: string): Promise<GrammarCorrectionResult> => {
-  if (!englishText.trim()) {
-    return { correctedSentence: '', explanations: [], alternatives: [] };
+  validateApiKey();
+  
+  const trimmed = englishText.trim();
+  if (!trimmed) {
+    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
   
   const grammarSchema = {
@@ -131,7 +149,7 @@ Your response must be a JSON object that adheres to the provided schema.
 - For the \`explanation\` field in the \`explanations\` array, you must provide the explanation in **Vietnamese**.
 - For the \`alternatives\` array, provide three distinct options.
 
-Original Sentence: "${englishText}"
+Original Sentence: "${trimmed}"
 `;
     
     const response = await ai.models.generateContent({
@@ -143,11 +161,13 @@ Original Sentence: "${englishText}"
       },
     });
 
+    if (!response.text) {
+      throw new Error('Empty response from API');
+    }
     return JSON.parse(response.text.trim());
   } catch (error) {
     console.error("Error during grammar correction:", error);
-    // FIX: Throw an error to let the UI component handle the error state, rather than returning an error string.
-    throw new Error("Sorry, an error occurred while correcting grammar. Please try again.");
+    throw new Error(ERROR_MESSAGES.GRAMMAR_ERROR);
   }
 };
 
@@ -171,8 +191,11 @@ export interface WordMeaningResult {
 }
 
 export const getWordMeaning = async (englishWord: string): Promise<WordMeaningResult | null> => {
-  if (!englishWord.trim()) {
-    return null;
+  validateApiKey();
+  
+  const trimmed = englishWord.trim();
+  if (!trimmed) {
+    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
 
   const wordMeaningSchema = {
@@ -226,7 +249,7 @@ export const getWordMeaning = async (englishWord: string): Promise<WordMeaningRe
     const textPrompt = `Analyze the following English word and provide a detailed breakdown.
 Your response must be a JSON object that adheres to the provided schema.
 
-Word: "${englishWord}"
+Word: "${trimmed}"
 `;
     
     const [textResponse, ukAudioResponse, usAudioResponse] = await Promise.allSettled([
@@ -242,7 +265,7 @@ Word: "${englishWord}"
       // UK Audio Generation (Puck has a British-like accent)
       ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: englishWord }] }],
+        contents: [{ parts: [{ text: trimmed }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -253,7 +276,7 @@ Word: "${englishWord}"
       // US Audio Generation (Zephyr has an American-like accent)
       ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: englishWord }] }],
+        contents: [{ parts: [{ text: trimmed }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -265,7 +288,11 @@ Word: "${englishWord}"
 
     if (textResponse.status === 'rejected') {
         console.error("Error during word meaning text generation:", textResponse.reason);
-        throw new Error("Sorry, an error occurred while fetching the definition.");
+        throw new Error(ERROR_MESSAGES.MEANING_ERROR);
+    }
+    
+    if (!textResponse.value.text) {
+      throw new Error('Empty response from API');
     }
     const textData = JSON.parse(textResponse.value.text.trim());
 
@@ -283,7 +310,7 @@ Word: "${englishWord}"
 
   } catch (error) {
     console.error("Error during word meaning check:", error);
-    throw new Error("Sorry, an error occurred while checking the word. Please try again.");
+    throw new Error(ERROR_MESSAGES.MEANING_ERROR);
   }
 };
 
@@ -292,9 +319,13 @@ export const askFollowUp = async (
   chatHistory: ChatMessage[], 
   newQuestion: string
 ): Promise<string> => {
-  if (!newQuestion.trim()) {
-    return "";
+  validateApiKey();
+  
+  const trimmedQuestion = newQuestion.trim();
+  if (!trimmedQuestion) {
+    throw new Error(ERROR_MESSAGES.INVALID_INPUT);
   }
+  
   try {
     const contents: Content[] = [
       // System instruction / initial context
@@ -314,7 +345,7 @@ export const askFollowUp = async (
       // The new question
       {
         role: 'user',
-        parts: [{ text: newQuestion }],
+        parts: [{ text: trimmedQuestion }],
       },
     ];
 
@@ -323,9 +354,12 @@ export const askFollowUp = async (
       contents: contents,
     });
 
+    if (!response.text) {
+      throw new Error('Empty response from API');
+    }
     return response.text.trim();
   } catch (error) {
     console.error("Error during follow-up question:", error);
-    throw new Error("Sorry, an error occurred while answering your question. Please try again.");
+    throw new Error(ERROR_MESSAGES.CHAT_ERROR);
   }
 };

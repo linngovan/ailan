@@ -1,52 +1,41 @@
 
 import React, { useState, useCallback } from 'react';
-import { correctGrammar, askFollowUp, GrammarCorrectionResult } from '../services/geminiService.ts';
+import { correctGrammar, GrammarCorrectionResult } from '../services/geminiService.ts';
 import ResultCard from './common/ResultCard.tsx';
 import LoadingSpinner from './common/LoadingSpinner.tsx';
 import FollowUpChat from './common/FollowUpChat.tsx';
-import { ChatMessage } from '../types.ts';
+import { useChat } from '../hooks/useChat.ts';
+import { LOADING_MESSAGES, BUTTON_LABELS, PLACEHOLDERS, ERROR_MESSAGES } from '../constants.ts';
 
 const GrammarCorrector: React.FC = () => {
     const [inputText, setInputText] = useState<string>('');
     const [resultData, setResultData] = useState<GrammarCorrectionResult | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
-
-    // State for follow-up chat
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    const { chatMessages, isChatLoading, sendChatMessage, resetChat } = useChat();
 
     const handleCorrection = useCallback(async () => {
         if (!inputText.trim()) return;
         setIsLoading(true);
         setError('');
         setResultData(null);
-        setChatMessages([]); // Reset chat on new correction
+        resetChat(); // Reset chat on new correction
         try {
             const correction = await correctGrammar(inputText);
             setResultData(correction);
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred.');
+            setError(err.message || ERROR_MESSAGES.GRAMMAR_ERROR);
         } finally {
             setIsLoading(false);
         }
-    }, [inputText]);
+    }, [inputText, resetChat]);
 
     const handleSendChatMessage = useCallback(async (question: string) => {
-        setIsChatLoading(true);
-        const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', text: question }];
-        setChatMessages(newMessages);
+        if (!resultData) return;
 
-        try {
-            const contextPrompt = `Original English Sentence: "${inputText}"\n\nAI Grammar Correction and Analysis:\n${JSON.stringify(resultData, null, 2)}`;
-            const response = await askFollowUp(contextPrompt, chatMessages, question);
-            setChatMessages([...newMessages, { role: 'model', text: response }]);
-        } catch (err: any) {
-            setChatMessages([...newMessages, { role: 'model', text: `Sorry, I encountered an error: ${err.message}` }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [inputText, resultData, chatMessages]);
+        const contextPrompt = `Original English Sentence: "${inputText}"\n\nAI Grammar Correction and Analysis:\n${JSON.stringify(resultData, null, 2)}`;
+        await sendChatMessage(question, contextPrompt, chatMessages);
+    }, [inputText, resultData, chatMessages, sendChatMessage]);
 
     return (
         <div className="flex flex-col gap-4">
@@ -57,8 +46,8 @@ const GrammarCorrector: React.FC = () => {
                 <textarea
                     id="english-input"
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="e.g., He don't know what to do."
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputText(e.target.value)}
+                    placeholder={PLACEHOLDERS.ENGLISH_INPUT}
                     rows={4}
                     className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow duration-200"
                     disabled={isLoading}
@@ -72,10 +61,10 @@ const GrammarCorrector: React.FC = () => {
                 {isLoading ? (
                     <>
                         <LoadingSpinner />
-                        Đang sửa...
+                        {LOADING_MESSAGES.CORRECTING}
                     </>
                 ) : (
-                    'Sửa Ngữ pháp'
+                    BUTTON_LABELS.CORRECT_GRAMMAR
                 )}
             </button>
             {error && <p className="text-red-500 text-sm">{error}</p>}

@@ -3,21 +3,7 @@ import { AppMode } from './types.ts';
 import TranslateChecker from './components/TranslateChecker.tsx';
 import GrammarCorrector from './components/GrammarCorrector.tsx';
 import WordMeaningChecker from './components/WordMeaningChecker.tsx';
-
-// FIX: Replaced JSX.Element with React.ReactNode to resolve TypeScript error "Cannot find namespace 'JSX'".
-const TabButton = ({ label, icon, isActive, onClick }: { label: string, icon: React.ReactNode, isActive: boolean, onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm sm:text-base font-semibold rounded-lg transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-slate-100 ${
-            isActive
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-        }`}
-    >
-        {icon}
-        {label}
-    </button>
-);
+import TabButton from './components/common/TabButton.tsx';
 
 const App: React.FC = () => {
     const [mode, setMode] = useState<AppMode>(AppMode.Translate);

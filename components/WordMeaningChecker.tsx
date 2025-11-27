@@ -1,12 +1,12 @@
 
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { getWordMeaning, WordMeaningResult, askFollowUp } from '../services/geminiService.ts';
+import { getWordMeaning, WordMeaningResult } from '../services/geminiService.ts';
 import ResultCard from './common/ResultCard.tsx';
 import LoadingSpinner from './common/LoadingSpinner.tsx';
-import { wordList } from '../../data/wordlist.ts';
+import { wordList } from '../data/wordlist.ts';
 import FollowUpChat from './common/FollowUpChat.tsx';
-import { ChatMessage } from '../types.ts';
+import { useChat } from '../hooks/useChat.ts';
+import { UI_CONFIG, LOADING_MESSAGES, BUTTON_LABELS, PLACEHOLDERS, ERROR_MESSAGES } from '../constants.ts';
 
 const WordMeaningChecker: React.FC = () => {
     const [inputText, setInputText] = useState<string>('');
@@ -20,8 +20,7 @@ const WordMeaningChecker: React.FC = () => {
     const suggestionsRef = useRef<HTMLDivElement>(null);
 
     // State for follow-up chat
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    const { chatMessages, isChatLoading, sendChatMessage, resetChat } = useChat();
 
     const handleCheckMeaning = useCallback(async (word: string) => {
         const trimmedWord = word.trim();
@@ -29,37 +28,26 @@ const WordMeaningChecker: React.FC = () => {
         setIsLoading(true);
         setError('');
         setResultData(null);
-        setChatMessages([]); // Reset chat
+        resetChat(); // Reset chat
         setIsSuggestionsVisible(false);
         try {
             const meaning = await getWordMeaning(trimmedWord);
             setResultData(meaning);
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred.');
+            setError(err.message || ERROR_MESSAGES.MEANING_ERROR);
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [resetChat]);
     
     const handleSendChatMessage = useCallback(async (question: string) => {
         if (!resultData) return;
 
-        setIsChatLoading(true);
-        const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', text: question }];
-        setChatMessages(newMessages);
-
-        try {
-             // Create a version of the result data without the audio for a cleaner context prompt
-            const contextData = { ...resultData, ukAudio: undefined, usAudio: undefined };
-            const contextPrompt = `Original English Word: "${inputText}"\n\nAI Definition and Analysis:\n${JSON.stringify(contextData, null, 2)}`;
-            const response = await askFollowUp(contextPrompt, chatMessages, question);
-            setChatMessages([...newMessages, { role: 'model', text: response }]);
-        } catch (err: any) {
-            setChatMessages([...newMessages, { role: 'model', text: `Sorry, I encountered an error: ${err.message}` }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [inputText, resultData, chatMessages]);
+        // Create a version of the result data without the audio for a cleaner context prompt
+        const contextData = { ...resultData, ukAudio: undefined, usAudio: undefined };
+        const contextPrompt = `Original English Word: "${inputText}"\n\nAI Definition and Analysis:\n${JSON.stringify(contextData, null, 2)}`;
+        await sendChatMessage(question, contextPrompt, chatMessages);
+    }, [inputText, resultData, chatMessages, sendChatMessage]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -78,10 +66,10 @@ const WordMeaningChecker: React.FC = () => {
         debounceTimeoutRef.current = window.setTimeout(() => {
             const filteredSuggestions = wordList
                 .filter(word => word.toLowerCase().startsWith(value.toLowerCase()))
-                .slice(0, 5); // Show top 5 suggestions
+                .slice(0, UI_CONFIG.WORD_SUGGESTIONS_LIMIT); // Show top 5 suggestions
             setSuggestions(filteredSuggestions);
             setIsSuggestionsVisible(filteredSuggestions.length > 0);
-        }, 200); // 200ms debounce time
+        }, UI_CONFIG.DEBOUNCE_DELAY_MS); // 200ms debounce time
     };
     
     const handleSuggestionClick = (word: string) => {
@@ -119,7 +107,7 @@ const WordMeaningChecker: React.FC = () => {
                     placeholder="Ví dụ: benevolent"
                     className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow duration-200"
                     disabled={isLoading}
-                    onKeyDown={(e) => {
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                         if (e.key === 'Enter' && !isLoading && inputText.trim()) {
                             handleCheckMeaning(inputText);
                         }
@@ -128,7 +116,7 @@ const WordMeaningChecker: React.FC = () => {
                 {isSuggestionsVisible && (
                     <div ref={suggestionsRef} className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         <ul className="py-1">
-                            {suggestions.map(word => (
+                            {suggestions.map((word: string) => (
                                 <li 
                                     key={word}
                                     onClick={() => handleSuggestionClick(word)}

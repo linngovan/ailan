@@ -1,53 +1,41 @@
 
-
 import React, { useState, useCallback } from 'react';
 import { translateAndCheck, askFollowUp, TranslateResult } from '../services/geminiService.ts';
 import ResultCard from './common/ResultCard.tsx';
 import LoadingSpinner from './common/LoadingSpinner.tsx';
 import FollowUpChat from './common/FollowUpChat.tsx';
-import { ChatMessage } from '../types.ts';
+import { useChat } from '../hooks/useChat.ts';
+import { LOADING_MESSAGES, BUTTON_LABELS, PLACEHOLDERS, ERROR_MESSAGES } from '../constants.ts';
 
 const TranslateChecker: React.FC = () => {
     const [inputText, setInputText] = useState<string>('');
     const [resultData, setResultData] = useState<TranslateResult | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
-
-    // State for follow-up chat
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+    const { chatMessages, isChatLoading, sendChatMessage, resetChat } = useChat();
 
     const handleTranslate = useCallback(async () => {
         if (!inputText.trim()) return;
         setIsLoading(true);
         setError('');
         setResultData(null);
-        setChatMessages([]); // Reset chat on new translation
+        resetChat(); // Reset chat on new translation
         try {
             const translation = await translateAndCheck(inputText);
             setResultData(translation);
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred.');
+            setError(err.message || ERROR_MESSAGES.TRANSLATION_ERROR);
         } finally {
             setIsLoading(false);
         }
-    }, [inputText]);
+    }, [inputText, resetChat]);
 
     const handleSendChatMessage = useCallback(async (question: string) => {
-        setIsChatLoading(true);
-        const newMessages: ChatMessage[] = [...chatMessages, { role: 'user', text: question }];
-        setChatMessages(newMessages);
+        if (!resultData) return;
 
-        try {
-            const contextPrompt = `Original Vietnamese Text: "${inputText}"\n\nAI Translation and Analysis:\n${JSON.stringify(resultData, null, 2)}`;
-            const response = await askFollowUp(contextPrompt, chatMessages, question);
-            setChatMessages([...newMessages, { role: 'model', text: response }]);
-        } catch (err: any) {
-             setChatMessages([...newMessages, { role: 'model', text: `Sorry, I encountered an error: ${err.message}` }]);
-        } finally {
-            setIsChatLoading(false);
-        }
-    }, [inputText, resultData, chatMessages]);
+        const contextPrompt = `Original Vietnamese Text: "${inputText}"\n\nAI Translation and Analysis:\n${JSON.stringify(resultData, null, 2)}`;
+        await sendChatMessage(question, contextPrompt, chatMessages);
+    }, [inputText, resultData, chatMessages, sendChatMessage]);
 
     return (
         <div className="flex flex-col gap-4">
@@ -58,8 +46,8 @@ const TranslateChecker: React.FC = () => {
                 <textarea
                     id="vietnamese-input"
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Ví dụ: Chúc bạn một ngày tốt lành!"
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputText(e.target.value)}
+                    placeholder={PLACEHOLDERS.VIETNAMESE_INPUT}
                     rows={4}
                     className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow duration-200"
                     disabled={isLoading}
@@ -73,10 +61,10 @@ const TranslateChecker: React.FC = () => {
                 {isLoading ? (
                     <>
                         <LoadingSpinner />
-                        Đang dịch...
+                        {LOADING_MESSAGES.TRANSLATING}
                     </>
                 ) : (
-                    'Dịch sang tiếng Anh'
+                    BUTTON_LABELS.TRANSLATE
                 )}
             </button>
             {error && <p className="text-red-500 text-sm">{error}</p>}
