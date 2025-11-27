@@ -2,8 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "env": {
-    "GEMINI_API_KEY": {
-      "description": "Google Gemini API Key"
-    }
+    "GEMINI_API_KEY": ""
   }
 }
