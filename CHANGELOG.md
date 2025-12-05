@@ -1,6 +1,153 @@
 # CHANGELOG
 
+## [Security Fix] - 2025-12-05
+
+### 🔒 CRITICAL SECURITY UPDATE
+
+#### Issue Identified
+- 🔴 **CRITICAL:** Gemini API key was exposed in client-side JavaScript bundle
+- 🔴 API key visible in browser DevTools and network requests
+- 🔴 Anyone could extract and abuse the API key
+- 🔴 Potential for unauthorized API usage and costs
+
+#### Root Cause
+```typescript
+// vite.config.ts - INSECURE (removed)
+define: {
+  'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+}
+```
+This injected the API key directly into the client bundle during build.
+
+#### Solution Implemented
+
+**1. Serverless API Proxy**
+- ✅ Created `/api/gemini.ts` - Vercel serverless function
+- ✅ API key now stored server-side only
+- ✅ Client requests proxied through secure endpoint
+- ✅ CORS protection implemented
+- ✅ Input validation on all endpoints
+
+**2. Refactored Client Service**
+- ✅ Updated `services/geminiService.ts` to use `/api/gemini`
+- ✅ Removed direct Gemini API calls from client
+- ✅ No API key access in client code
+- ✅ Maintained all existing functionality
+
+**3. Configuration Updates**
+- ✅ Removed API key injection from `vite.config.ts`
+- ✅ Updated `vercel.json` with API routes config
+- ✅ Added `@vercel/node` dependency for serverless functions
+- ✅ Removed client-side environment validation
+
+**4. Security Documentation**
+- ✅ Created `SECURITY.md` - Comprehensive security guide
+- ✅ Created `DEPLOYMENT.md` - Deployment instructions
+- ✅ Created `MIGRATION.md` - Migration guide
+- ✅ Created `SECURITY_FIX_SUMMARY.md` - Executive summary
+- ✅ Created `QUICK_REFERENCE.md` - Quick reference guide
+- ✅ Created `verify-security.sh` - Automated security checks
+
+#### Files Changed
+
+**New Files (8):**
+- `api/gemini.ts` - Serverless API proxy (CRITICAL)
+- `SECURITY.md` - Security implementation docs
+- `DEPLOYMENT.md` - Deployment guide
+- `MIGRATION.md` - Migration instructions
+- `SECURITY_FIX_SUMMARY.md` - Executive summary
+- `QUICK_REFERENCE.md` - Quick reference
+- `.env.local.example` - Environment template
+- `verify-security.sh` - Security verification script
+
+**Modified Files (7):**
+- `services/geminiService.ts` - Refactored to use API proxy
+- `vite.config.ts` - Removed API key injection
+- `vercel.json` - Added API routes configuration
+- `package.json` - Added @vercel/node dependency
+- `README.md` - Updated with security information
+- `index.tsx` - Removed client-side env validation
+- `CHANGELOG.md` - This entry
+
+**Removed Files (1):**
+- `utils/env.ts` - No longer needed (validation moved to server)
+
+#### Security Verification
+
+All security checks passed ✅:
+```bash
+./verify-security.sh
+
+✓ .env.local is properly gitignored
+✓ Build successful
+✓ No API key patterns found in build output
+✓ API proxy file exists
+✓ Vite config is secure
+```
+
+#### Architecture Change
+
+**Before (INSECURE):**
+```
+Client Browser → Direct API Call (with exposed key) → Gemini API
+```
+
+**After (SECURE):**
+```
+Client Browser → /api/gemini (no key) → Serverless Function (with key) → Gemini API
+```
+
+#### Security Improvements
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| API Key in Client | ❌ Exposed | ✅ Hidden |
+| API Key in Network | ❌ Visible | ✅ Hidden |
+| API Key in Source | ❌ Yes | ✅ No |
+| Server-Side Only | ❌ No | ✅ Yes |
+| CORS Protection | ❌ None | ✅ Configured |
+| Rate Limiting Ready | ❌ No | ✅ Yes |
+| Input Validation | ⚠️ Client only | ✅ Server-side |
+
+#### Performance Impact
+
+- Added latency: ~10-50ms per request
+- Benefit: Enables caching and rate limiting
+- Overall: Minimal impact, significant security gain
+
+#### Action Required
+
+⚠️ **IMPORTANT - Before deploying:**
+
+1. **Revoke exposed API key** in Google AI Studio
+2. **Generate new API key**
+3. **Set new key in Vercel** environment variables
+4. **Deploy to production**
+5. **Verify security** in production
+
+#### Testing Checklist
+
+- [x] Security verification script passes
+- [x] Local development works
+- [x] Production build succeeds
+- [x] No API key in client bundle
+- [x] API proxy functions correctly
+- [ ] **Revoke old API key** (USER ACTION REQUIRED)
+- [ ] **Deploy with new key** (USER ACTION REQUIRED)
+
+#### Documentation
+
+For complete details, see:
+- **[SECURITY_FIX_SUMMARY.md](SECURITY_FIX_SUMMARY.md)** - Start here
+- **[SECURITY.md](SECURITY.md)** - Security implementation
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide
+- **[MIGRATION.md](MIGRATION.md)** - Migration details
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick commands
+
+---
+
 ## [Improved] - 2025-11-27
+
 
 ### 🎉 Major Improvements
 

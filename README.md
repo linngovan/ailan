@@ -13,6 +13,13 @@ An intelligent language learning assistant powered by Google Gemini, helping you
 - **📚 Word Meaning Check**: Get comprehensive word definitions, pronunciations, and example sentences
 - **💬 Interactive Follow-up Chat**: Ask follow-up questions about any result in real-time
 - **🔊 Audio Pronunciation**: Hear both UK and US English pronunciations (Word Meaning feature)
+- **🔒 Secure API Architecture**: API key protected with serverless proxy (never exposed to client)
+
+## 📚 Documentation
+
+- **[Security Guide](SECURITY.md)** - Learn about our security implementation
+- **[Deployment Guide](DEPLOYMENT.md)** - Step-by-step Vercel deployment instructions
+
 
 ## 🛠️ Tech Stack
 
@@ -37,11 +44,24 @@ npm install
 
 ### 2. Configure API Key
 
+#### For Local Development
+
 Create a `.env.local` file in the root directory:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+#### For Vercel Deployment
+
+1. Go to your Vercel project dashboard
+2. Navigate to **Settings** → **Environment Variables**
+3. Add a new variable:
+   - **Name**: `GEMINI_API_KEY`
+   - **Value**: Your actual Gemini API key
+   - **Environment**: Production, Preview, Development (select all)
+
+**🔒 Security Note**: The API key is now securely stored on the server-side only. It will never be exposed to the client or visible in browser DevTools.
 
 ### 3. Run the App
 
@@ -58,6 +78,16 @@ npm run build
 ```
 
 This generates an optimized production build in the `dist` folder.
+
+## 🚀 Deploy to Vercel
+
+1. Push your code to GitHub
+2. Import the repository in Vercel
+3. Set the `GEMINI_API_KEY` environment variable in Vercel dashboard
+4. Deploy!
+
+The serverless API will automatically handle all Gemini API calls securely.
+
 
 ## 🏗️ Project Structure
 

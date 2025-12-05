@@ -2,11 +2,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
-import { validateEnvironment, logEnvironmentConfig } from './utils/env.ts';
 
-// Validate environment on startup
-validateEnvironment();
-logEnvironmentConfig();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
