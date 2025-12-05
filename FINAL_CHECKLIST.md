@@ -11,7 +11,7 @@
 
 - [x] **No API keys in source code**
   ```bash
-  grep -rn "AIzaSyAZNeVmrKLS_Rpyaku7zCSWkOFsUCxkNac" . --exclude-dir={node_modules,dist,.git}
+  grep -rn "AIzaSy" . --exclude-dir={node_modules,dist,.git}
   # Result: No matches found ✅
   ```
 
@@ -221,7 +221,7 @@ Run these commands before committing:
 # Expected: ✅ All security checks passed!
 
 # 2. Check for API keys
-grep -rn "AIzaSyAZNeVmrKLS_Rpyaku7zCSWkOFsUCxkNac" . --exclude-dir={node_modules,dist,.git}
+grep -rn "AIzaSy" . --exclude-dir={node_modules,dist,.git}
 # Expected: No results
 
 # 3. Check .gitignore
