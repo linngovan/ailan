@@ -11,7 +11,7 @@
 
 - [x] **No API keys in source code**
   ```bash
-  grep -rn "AIzaSyAZNeVmrKLS_Rpyaku7zCSWkOFsUCxkNac" . --exclude-dir={node_modules,dist,.git}
+  grep -rn "AI..." . --exclude-dir={node_modules,dist,.git}
   # Result: No matches found ✅
   ```
 
